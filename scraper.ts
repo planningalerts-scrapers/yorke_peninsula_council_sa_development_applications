@@ -13,7 +13,7 @@ import * as moment from "moment";
 
 sqlite3.verbose();
 
-const DevelopmentApplicationsUrl = "https://yorke.sa.gov.au/development/development-information/development-register/?gv_search=&filter_1=&filter_3=&gv_start={0}&gv_end={1}&filter_7=&mode=all"
+const DevelopmentApplicationsUrl = "https://yorke.sa.gov.au/development/development-information/development-register/?pagenum={0}&gv_search=&filter_1=&filter_3=&gv_start={1}&gv_end={2}&filter_7=&mode=all"
 const CommentUrl = "mailto:admin@yorke.sa.gov.au";
 
 declare const process: any;
@@ -68,50 +68,48 @@ async function main() {
 
     let database = await initializeDatabase();
 
-    // Retrieve the results of a search for the last month.
+    // Retrieve the paged results of a search for the last month.
+
+    let pageNumber = 1;
 
     let dateFrom = encodeURIComponent(moment().subtract(1, "months").format("DD/MM/YYYY"));
     let dateTo = encodeURIComponent(moment().format("DD/MM/YYYY"));
-    let developmentApplicationsUrl = DevelopmentApplicationsUrl.replace(/\{0\}/g, dateFrom).replace(/\{1\}/g, dateTo);
+    let developmentApplicationsUrl = DevelopmentApplicationsUrl.replace(/\{0\}/g, pageNumber.toString()).replace(/\{1\}/g, dateFrom).replace(/\{2\}/g, dateTo);
     console.log(`Retrieving page: ${developmentApplicationsUrl}`);
     let body = await request({ url: developmentApplicationsUrl, rejectUnauthorized: false, proxy: process.env.MORPH_PROXY });
     let $ = cheerio.load(body);
 
     // Parse the search results.
 
-    for (let headerElement of $("h4.non_table_headers").get()) {
-        let address: string = $(headerElement).text().trim().replace(/\s\s+/g, " ");  // reduce multiple consecutive spaces in the address to a single space
-        let applicationNumber = "";
-        let reason = "";
-        let receivedDate = moment.invalid();
-
-        for (let divElement of $(headerElement).next("div").get()) {
-            for (let paragraphElement of $(divElement).find("p.rowDataOnly").get()) {
-                let key: string = $(paragraphElement).children("span.key").text().trim();
-                let value: string = $(paragraphElement).children("span.inputField").text().trim();
-                if (key === "Type of Work")
-                    reason = value;
-                else if (key === "Application No.")
-                    applicationNumber = value;
-                else if (key === "Date Lodged")
-                    receivedDate = moment(value, "D/MM/YYYY", true);  // allows the leading zero of the day to be omitted
-            }
-        }
-
-        // Ensure that at least an application number and address have been obtained.
-
-        if (applicationNumber !== "" && address !== "") {
-            await insertRow(database, {
-                applicationNumber: applicationNumber,
-                address: address,
-                reason: reason,
-                informationUrl: DevelopmentApplicationsUrl,
-                commentUrl: CommentUrl,
-                scrapeDate: moment().format("YYYY-MM-DD"),
-                receivedDate: receivedDate.isValid ? receivedDate.format("YYYY-MM-DD") : ""
-            });
+    for (let trElement of $("table.gv-table-view tr").get()) {
+        for (let tdElement of $(trElement).find("td").get()) {
+            console.log($(tdElement).text());
+            if ($(tdElement).find("a").attr("href") !== undefined)
+                console.log($(tdElement).find("a").attr("href"));
+            // let key: string = $(paragraphElement).children("span.key").text().trim();
+            // let value: string = $(paragraphElement).children("span.inputField").text().trim();
+            // if (key === "Type of Work")
+            //     reason = value;
+            // else if (key === "Application No.")
+            //     applicationNumber = value;
+            // else if (key === "Date Lodged")
+            //     receivedDate = moment(value, "D/MM/YYYY", true);  // allows the leading zero of the day to be omitted
         }
     }
+
+    // Ensure that at least an application number and address have been obtained.
+    //
+    // if (applicationNumber !== "" && address !== "") {
+    //     await insertRow(database, {
+    //         applicationNumber: applicationNumber,
+    //         address: address,
+    //         reason: reason,
+    //         informationUrl: DevelopmentApplicationsUrl,
+    //         commentUrl: CommentUrl,
+    //         scrapeDate: moment().format("YYYY-MM-DD"),
+    //         receivedDate: receivedDate.isValid ? receivedDate.format("YYYY-MM-DD") : ""
+    //     });
+    // }
 }
 
 main().then(() => console.log("Complete.")).catch(error => console.error(error));
