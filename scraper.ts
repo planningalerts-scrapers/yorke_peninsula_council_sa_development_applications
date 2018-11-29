@@ -6,10 +6,12 @@
 
 "use strict";
 
+import * as fs from "fs";
 import * as cheerio from "cheerio";
 import * as request from "request-promise-native";
 import * as sqlite3 from "sqlite3";
 import * as moment from "moment";
+import * as didyoumean from "didyoumean2";
 
 sqlite3.verbose();
 
@@ -17,6 +19,10 @@ const DevelopmentApplicationsUrl = "https://yorke.sa.gov.au/development/developm
 const CommentUrl = "mailto:admin@yorke.sa.gov.au";
 
 declare const process: any;
+
+// Address information.
+
+let SuburbNames = null;
 
 // Sets up an sqlite database.
 
@@ -76,6 +82,14 @@ function sleep(milliseconds: number) {
 // Parses the development applications.
 
 async function main() {
+    // Read the suburb names.
+
+    SuburbNames = {};
+    for (let line of fs.readFileSync("suburbnames.txt").toString().replace(/\r/g, "").trim().split("\n")) {
+        let suburbTokens = line.toUpperCase().split(",");
+        SuburbNames[suburbTokens[0].toUpperCase().trim()] = suburbTokens[1].toUpperCase().trim();
+    }
+
     // Ensure that the database exists.
 
     let database = await initializeDatabase();
