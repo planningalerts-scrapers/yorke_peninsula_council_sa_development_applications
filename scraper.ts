@@ -38,7 +38,7 @@ async function insertRow(database, developmentApplication) {
         sqlStatement.run([
             developmentApplication.applicationNumber,
             developmentApplication.address,
-            developmentApplication.reason,
+            developmentApplication.description,
             developmentApplication.informationUrl,
             developmentApplication.commentUrl,
             developmentApplication.scrapeDate,
@@ -51,9 +51,9 @@ async function insertRow(database, developmentApplication) {
                 reject(error);
             } else {
                 if (this.changes > 0)
-                    console.log(`    Inserted: application \"${developmentApplication.applicationNumber}\" with address \"${developmentApplication.address}\" and reason \"${developmentApplication.reason}\" into the database.`);
+                    console.log(`    Inserted: application \"${developmentApplication.applicationNumber}\" with address \"${developmentApplication.address}\" and description \"${developmentApplication.description}\" into the database.`);
                 else
-                    console.log(`    Skipped: application \"${developmentApplication.applicationNumber}\" with address \"${developmentApplication.address}\" and reason \"${developmentApplication.reason}\" because it was already present in the database.`);
+                    console.log(`    Skipped: application \"${developmentApplication.applicationNumber}\" with address \"${developmentApplication.address}\" and description \"${developmentApplication.description}\" because it was already present in the database.`);
                 sqlStatement.finalize();  // releases any locks
                 resolve(row);
             }
@@ -82,76 +82,67 @@ async function main() {
 
     // Retrieve the paged results of a search for the last month.
 
-    let pageNumber = 1;
+    let pageNumber = 0;
 
-    let dateFrom = encodeURIComponent(moment().subtract(1, "months").format("DD/MM/YYYY"));
-    let dateTo = encodeURIComponent(moment().format("DD/MM/YYYY"));
-    let developmentApplicationsUrl = DevelopmentApplicationsUrl.replace(/\{0\}/g, pageNumber.toString()).replace(/\{1\}/g, dateFrom).replace(/\{2\}/g, dateTo);
+    while (pageNumber++ < 50) {  // safety precaution
+        let dateFrom = encodeURIComponent(moment().subtract(1, "months").format("DD/MM/YYYY"));
+        let dateTo = encodeURIComponent(moment().format("DD/MM/YYYY"));
+        let developmentApplicationsUrl = DevelopmentApplicationsUrl.replace(/\{0\}/g, pageNumber.toString()).replace(/\{1\}/g, dateFrom).replace(/\{2\}/g, dateTo);
 
-    console.log(`Retrieving page: ${developmentApplicationsUrl}`);
-    let body = await request({ url: developmentApplicationsUrl, rejectUnauthorized: false, proxy: process.env.MORPH_PROXY });
-    await sleep(2000 + getRandom(0, 5) * 1000);
-    let $ = cheerio.load(body);
-
-    // Parse the search results.
-
-    let urls = [];
-    for (let trElement of $("table.gv-table-view tr").get()) {
-        for (let tdElement of $(trElement).find("td").get()) {
-            // console.log($(tdElement).text());
-            if ($(tdElement).find("a").attr("href") !== undefined) {
-                let url = $(tdElement).find("a").attr("href");
-                if (url !== undefined)
-                    urls.push(url);
-                console.log(url);
-            }
-            // let key: string = $(paragraphElement).children("span.key").text().trim();
-            // let value: string = $(paragraphElement).children("span.inputField").text().trim();
-            // if (key === "Type of Work")
-            //     reason = value;
-            // else if (key === "Application No.")
-            //     applicationNumber = value;
-            // else if (key === "Date Lodged")
-            //     receivedDate = moment(value, "D/MM/YYYY", true);  // allows the leading zero of the day to be omitted
-        }
-    }
-
-    console.log(`Examining each development application on the page.`);
-    for (let url of urls) {
-        let body = await request({ url: url, rejectUnauthorized: false, proxy: process.env.MORPH_PROXY });
+        console.log(`Retrieving page ${pageNumber}: ${developmentApplicationsUrl}`);
+        let body = await request({ url: developmentApplicationsUrl, rejectUnauthorized: false, proxy: process.env.MORPH_PROXY });
+        await sleep(2000 + getRandom(0, 5) * 1000);
         let $ = cheerio.load(body);
-        for (let trElement of $("table.gv-table-view-content tr").get()) {
-            let key = $(trElement).find("th").text().toUpperCase().trim();
 
-            if (key === "DA NUMBER") {
-                let value = $(trElement).find("td").text().trim();
-                console.log(`${key}: ${value}`);
-            } else if (key === "DATE APPLICATION RECEIVED") {
-                let value = $(trElement).find("td").text().trim();
-                console.log(`${key}: ${value}`);
-            } else if (key === "DEVELOPMENT DETAILS") {
-                let value = $(trElement).find("td").text().trim();
-                console.log(`${key}: ${value}`);
-            } else if (key === "DEVELOPMENT ADDRESS") {
-                let value = $(trElement).find("td").html().replace(/<br\s*[\/]?>/gi, "\n").replace(/<a\s.*?>.*?<\/a>/gi, "").trim();
-                console.log(`${key}: ${value}`);
+        // Parse the search results.
+
+        for (let trElement of $("table.gv-table-view tr").get()) {
+            let url = $(trElement).find("#gv-field-31-1 a").attr("href");
+            if (url === undefined)
+                continue;
+
+            // Obtain the description for the application.
+
+            let childBody = await request({ url: url, rejectUnauthorized: false, proxy: process.env.MORPH_PROXY });
+            let childPage = cheerio.load(childBody);
+
+            let address = $(trElement).find("#gv-field-31-7").text().trim();
+            let applicationNumber = "";
+            let receivedDate = moment.invalid();
+            let description = "";
+
+            for (let trElement of childPage("table.gv-table-view-content tr").get()) {
+                let key = childPage(trElement).find("th").text().toUpperCase().trim();
+
+                if (key === "DA NUMBER")
+                    applicationNumber = childPage(trElement).find("td").text().trim();
+                else if (key === "DATE APPLICATION RECEIVED")
+                    receivedDate = moment(childPage(trElement).find("td").text().trim(), "D/MM/YYYY", true);
+                else if (key === "DEVELOPMENT DETAILS")
+                    description = childPage(trElement).find("td").text().trim().replace(/&apos;/g, "'");
+            }
+
+            // Ensure that at least an application number and address have been obtained.
+            
+            if (applicationNumber !== "" && applicationNumber !== undefined && address !== "" && address !== undefined) {
+                await insertRow(database, {
+                    applicationNumber: applicationNumber,
+                    address: address,
+                    description: description,
+                    informationUrl: DevelopmentApplicationsUrl,
+                    commentUrl: CommentUrl,
+                    scrapeDate: moment().format("YYYY-MM-DD"),
+                    receivedDate: receivedDate.isValid ? receivedDate.format("YYYY-MM-DD") : ""
+                });
             }
         }
-    }
 
-    // Ensure that at least an application number and address have been obtained.
-    //
-    // if (applicationNumber !== "" && address !== "") {
-    //     await insertRow(database, {
-    //         applicationNumber: applicationNumber,
-    //         address: address,
-    //         reason: reason,
-    //         informationUrl: DevelopmentApplicationsUrl,
-    //         commentUrl: CommentUrl,
-    //         scrapeDate: moment().format("YYYY-MM-DD"),
-    //         receivedDate: receivedDate.isValid ? receivedDate.format("YYYY-MM-DD") : ""
-    //     });
-    // }
+        // If there is no "next page" link then assume this is the last page.
+
+        let hasNextPageLink = ($("ul.page-numbers li a.next").length > 0);
+        if (!hasNextPageLink)
+            break;
+    }
 }
 
 main().then(() => console.log("Complete.")).catch(error => console.error(error));
