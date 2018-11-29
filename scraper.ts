@@ -79,6 +79,43 @@ function sleep(milliseconds: number) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
+// Format the address, ensuring that it has a valid suburb, state and post code.
+
+function formatAddress(address: string) {
+    address = address.trim();
+    if (address === "")
+        return "";
+
+    // Remove any hundred name in brackets (that often appears after the suburb name).
+
+    address = address.replace(/ \(Hd.*?\)/gi, "");
+
+    // Pop tokens from the end of the array until a valid suburb name is encountered (allowing
+    // for a few spelling errors).
+
+    let tokens = address.split(" ");
+
+    let suburbName = null;
+    for (let index = 1; index <= 4; index++) {
+        let suburbNameMatch = didyoumean(tokens.slice(-index).join(" "), Object.keys(SuburbNames), { caseSensitive: false, returnType: "first-closest-match", thresholdType: "edit-distance", threshold: 2, trimSpace: true });
+        if (suburbNameMatch !== null) {
+            suburbName = SuburbNames[suburbNameMatch];
+            tokens.splice(-index, index);  // remove elements from the end of the array           
+            break;
+        }
+    }
+
+    if (suburbName === null) {  // suburb name not found (or not recognised)
+        console.log(`The state and post code will not be added because the suburb was not recognised: ${address}`);
+        return address;
+    }
+
+    // Add the suburb name with its state and post code to the street name.
+
+    let streetName = tokens.join(" ").trim();
+    return (streetName + ((streetName === "") ? "" : ", ") + suburbName).trim();
+}
+
 // Parses the development applications.
 
 async function main() {
@@ -120,7 +157,7 @@ async function main() {
             let childBody = await request({ url: url, rejectUnauthorized: false, proxy: process.env.MORPH_PROXY });
             let childPage = cheerio.load(childBody);
 
-            let address = $(trElement).find("#gv-field-31-7").text().trim();
+            let address = formatAddress($(trElement).find("#gv-field-31-7").text().trim());
             let applicationNumber = "";
             let receivedDate = moment.invalid();
             let description = "";
