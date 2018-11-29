@@ -1,0 +1,65 @@
+Agery,Agery SA 5558
+Ardrossan,Ardrossan SA 5571
+Arthurton,Arthurton SA 5572
+Balgowan,Balgowan SA 5573
+Black Point,Black Point SA 5571
+Bluff Beach,Bluff Beach SA 5575
+Brentwood,Brentwood SA 5575
+Chinaman Wells,Chinaman Wells SA 5573
+Clinton Centre,Clinton Centre SA 5570
+Clinton,Clinton SA 5570
+Coobowie,Coobowie SA 5583
+Corny Point,Corny Point SA 5575
+Couch Beach,Couch Beach SA 5577
+Couch Beach's,Couch Beach SA 5577
+Cunningham,Cunningham SA 5571
+Curramulka,Curramulka SA 5580
+Dowlingville,Dowlingville SA 5555
+Edithburgh,Edithburgh SA 5583
+Foul Bay,Foul Bay SA 5577
+Hardwicke Bay,Hardwicke Bay SA 5575
+Honiton,Honiton SA 5576
+Inneston,Inneston SA 5577
+James Well,James Well SA 5571
+Kainton,Kainton SA 5552
+Koolywurtie,Koolywurtie SA 5575
+Maitland,Maitland SA 5573
+Marion Bay,Marion Bay SA 5575
+Minlaton,Minlaton SA 5575
+Nalyappa,Nalyappa SA 5558
+Parsons Beach,Parsons Beach SA 5575
+Petersville,Petersville SA 5571
+Pine Point,Pine Point SA 5571
+Point Pearce,Point Pearce SA 5573
+Point Souttar,Point Souttar SA 5575
+Point Turton,Point Turton SA 5575
+Port Arthur,Port Arthur SA 5552
+Port Clinton,Port Clinton SA 5555
+Port Giles,Port Giles SA 5582
+Port Julia,Port Julia SA 5575
+Port Moorowie,Port Moorowie SA 5576
+Port Rickaby,Port Rickaby SA 5576
+Port Victoria,Port Victoria SA 5573
+Port Vincent,Port Vincent SA 5581
+Price,Price SA 5570
+Ramsay,Ramsay SA 5575
+Rogues Point,Rogues Point SA 5571
+Sandilands,Sandilands SA 5571
+Sheaoak Flat,Sheaoak Flat SA 5581
+Sheoak Flat,Sheaoak Flat SA 5581
+South Kilkerran,South Kilkerran SA 5573
+Stansbury,Stansbury SA 5582
+Stenhouse Bay,Stenhouse Bay SA 5575
+Sultana Point,Sultana Point SA 5583
+Sunnyvale,Sunnyvale SA 5552
+The Pines,The Pines SA 5575
+Tiddy Widdy Beach,Tiddy Widdy Beach SA 5571
+Urania,Urania SA 5573
+Warooka,Warooka SA 5577
+Wauraltee,Wauraltee SA 5573
+Weetulta,Weetulta SA 5573
+White Hut,White Hut SA 5575
+Winulta,Winulta SA 5570
+Wool Bay,Wool Bay SA 5575
+Yorke Valley,Yorke Valley SA 5573
+Yorketown,Yorketown SA 5576
