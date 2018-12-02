@@ -22,8 +22,8 @@ declare const process: any;
 
 // Address information.
 
-let SuburbNames = null;
-let HundredNames = null;
+let SuburbNames = undefined;
+let HundredNames = undefined;
 
 // Sets up an sqlite database.
 
@@ -37,7 +37,7 @@ async function initializeDatabase() {
     });
 }
 
-// Inserts a row in the database if it does not already exist.
+// Inserts a row in the database if the row does not already exist.
 
 async function insertRow(database, developmentApplication) {
     return new Promise((resolve, reject) => {
@@ -83,9 +83,10 @@ function sleep(milliseconds: number) {
 // Format the address, ensuring that it has a valid suburb name, state and post code.
 
 function formatAddress(address: string) {
-    // Remove a dot at the start of the address such as ". HD CLINTON" or in the middle of an
-    // address.  Remove duplicate spaces.  Remove any hundred name in brackets (that often
-    // appears after the suburb name).
+    // Remove a dot at the start of the address such as in ". HD CLINTON" or a dot in the middle
+    // of an address such as in "7 The Esplanade . MARION BAY".  Remove any hundred name in
+    // brackets (that often appears after the suburb name) such as in "106 Sultana Point Road
+    // EDITHBURGH (Hd Melville)".  Replace multiple consecutive spaces with single spaces.
 
     address = address.replace(/^\. /g, " ").replace(/ \. /g, " ").replace(/ \(Hd.*?\)/gi, "").replace(/\s\s+/g, " ").trim();
     if (address === "")
@@ -102,9 +103,9 @@ function formatAddress(address: string) {
         }
     }
 
-    // Pop tokens from the end of the array until a valid suburb name is encountered (allowing
-    // for a spelling error).  Prefer a longer suburb name over a shorter suburb name.  For
-    // example, prefer "PORT CLINTON" over "CLINTON".
+    // Extract tokens from the end of the array until a valid suburb name is encountered
+    // (allowing for a spelling error).  Prefer a longer suburb name over a shorter suburb
+    // name.  For example, prefer "PORT CLINTON" over "CLINTON".
 
     let tokens = address.split(" ");
 
@@ -132,10 +133,12 @@ function formatAddress(address: string) {
 // Parses the development applications in the specified date range.
 
 async function parse(dateFrom: moment.Moment, dateTo: moment.Moment, database) {
+    console.log(`Retrieving development applications from ${dateFrom.format("YYYY-MM-DD")} to ${dateTo.format("YYYY-MM-DD")}.`);
+
     let dateFromText = encodeURIComponent(dateFrom.format("DD/MM/YYYY"));
     let dateToText = encodeURIComponent(dateTo.format("DD/MM/YYYY"));
 
-    console.log(`Retrieving development applications from ${dateFrom.format("YYYY-MM-DD")} to ${dateTo.format("YYYY-MM-DD")}.`);
+    // Step through each page of the results for the specified date range.
 
     let pageNumber = 0;
     while (pageNumber++ < 100) {  // safety precaution
