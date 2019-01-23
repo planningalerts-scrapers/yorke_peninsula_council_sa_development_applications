@@ -15,7 +15,8 @@ import * as didyoumean from "didyoumean2";
 
 sqlite3.verbose();
 
-const DevelopmentApplicationsUrl = "https://yorke.sa.gov.au/development/development-information/development-register/?pagenum={0}&gv_search=&filter_1=&filter_3=&gv_start={1}&gv_end={2}&filter_7=&mode=all"
+const DevelopmentApplicationsUrl = "https://yorke.sa.gov.au/development/development-information/development-register/?pagenum={0}&gv_search=&filter_1=&filter_3=&gv_start={1}&gv_end={2}&filter_7=&mode=all";
+const InformationUrl = "https://yorke.sa.gov.au/development/development-information/development-register/?gv_search=&filter_1={0}&filter_3=&gv_start=&gv_end=&filter_7=&mode=all";
 const CommentUrl = "mailto:admin@yorke.sa.gov.au";
 
 declare const process: any;
@@ -180,11 +181,12 @@ async function parse(dateFrom: moment.Moment, dateTo: moment.Moment, database) {
             // Ensure that at least an application number and address have been obtained.
             
             if (applicationNumber !== "" && applicationNumber !== undefined && address !== "" && address !== undefined) {
+                let informationUrl = InformationUrl.replace(/\{0\}/g, encodeURIComponent(applicationNumber));
                 await insertRow(database, {
                     applicationNumber: applicationNumber,
                     address: address,
                     description: description,
-                    informationUrl: developmentApplicationUrl,
+                    informationUrl: informationUrl,
                     commentUrl: CommentUrl,
                     scrapeDate: moment().format("YYYY-MM-DD"),
                     receivedDate: receivedDate.isValid ? receivedDate.format("YYYY-MM-DD") : ""
