@@ -15,7 +15,8 @@ import * as didyoumean from "didyoumean2";
 
 sqlite3.verbose();
 
-const DevelopmentApplicationsUrl = "https://yorke.sa.gov.au/development/development-information/development-register/?pagenum={0}&gv_search=&filter_1=&filter_3=&gv_start={1}&gv_end={2}&filter_7=&mode=all"
+const DevelopmentApplicationsUrl = "https://yorke.sa.gov.au/development/development-information/development-register/?pagenum={0}&gv_search=&filter_1=&filter_3=&gv_start={1}&gv_end={2}&filter_7=&mode=all";
+const InformationUrl = "https://yorke.sa.gov.au/development/development-information/development-register/?gv_search=&filter_1={0}&filter_3=&gv_start=&gv_end=&filter_7=&mode=all";
 const CommentUrl = "mailto:admin@yorke.sa.gov.au";
 
 declare const process: any;
@@ -57,10 +58,30 @@ async function insertRow(database, developmentApplication) {
                 console.error(error);
                 reject(error);
             } else {
-                if (this.changes > 0)
+                sqlStatement.finalize();  // releases any locks
+                if (this.changes > 0) {
                     console.log(`    Inserted: application \"${developmentApplication.applicationNumber}\" with address \"${developmentApplication.address}\", description \"${developmentApplication.description}\" and received date \"${developmentApplication.receivedDate}\" into the database.`);
-                else
+                    resolve(true);  // indicate row was inserted
+                } else {
                     console.log(`    Skipped: application \"${developmentApplication.applicationNumber}\" with address \"${developmentApplication.address}\", description \"${developmentApplication.description}\" and received date \"${developmentApplication.receivedDate}\" because it was already present in the database.`);
+                    resolve(false);  // indicate row already existed so was not inserted
+                }
+            }
+        });
+    });
+}
+
+// Updates the inforation URL in a row in the database.
+
+async function updateRow(database, developmentApplication) {
+    return new Promise((resolve, reject) => {
+        let sqlStatement = database.prepare("update [data] set [info_url] = ? where [info_url] like 'https://yorke.sa.gov.au/development/development-information/development-register/entry/%' and [council_reference] = ?");
+        sqlStatement.run([ developmentApplication.informationUrl, developmentApplication.applicationNumber ],
+        function(error, row) {
+            if (error) {
+                console.error(error);
+                reject(error);
+            } else {
                 sqlStatement.finalize();  // releases any locks
                 resolve(row);
             }
@@ -180,15 +201,19 @@ async function parse(dateFrom: moment.Moment, dateTo: moment.Moment, database) {
             // Ensure that at least an application number and address have been obtained.
             
             if (applicationNumber !== "" && applicationNumber !== undefined && address !== "" && address !== undefined) {
-                await insertRow(database, {
+                let informationUrl = InformationUrl.replace(/\{0\}/g, encodeURIComponent(applicationNumber));
+                let developmentApplication = {
                     applicationNumber: applicationNumber,
                     address: address,
                     description: description,
-                    informationUrl: developmentApplicationUrl,
+                    informationUrl: informationUrl,
                     commentUrl: CommentUrl,
                     scrapeDate: moment().format("YYYY-MM-DD"),
                     receivedDate: receivedDate.isValid ? receivedDate.format("YYYY-MM-DD") : ""
-                });
+                }
+                let hasInserted = await insertRow(database, developmentApplication);
+                if (!hasInserted)  // if not inserted because already existed
+                    await updateRow(database, developmentApplication);
             }
         }
 
